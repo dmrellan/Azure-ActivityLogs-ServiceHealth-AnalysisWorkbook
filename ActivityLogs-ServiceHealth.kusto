@@ -1,0 +1,28 @@
+//Query
+AzureActivity
+| where CategoryValue == "ServiceHealth"
+//| where Level in ('Warning','Error','Information')
+| extend IncidentType= tostring(parse_json(tostring(Properties_d.eventProperties)).incidentType)
+//| where IncidentType in ('Incident','Maintenance','ActionRequired')
+| extend ImpactMitigationTime = tostring(parse_json(tostring(Properties_d.eventProperties)).impactMitigationTime)
+| extend ImpactStartTime = tostring(parse_json(tostring(Properties_d.eventProperties)).impactStartTime)
+| extend Status = tostring(Properties_d.activityStatusValue)
+| extend Service = tostring(parse_json(tostring(Properties_d.eventProperties)).service)
+| extend Title = tostring(parse_json(tostring(Properties_d.eventProperties)).defaultLanguageTitle)
+| extend TrackingId = tostring(parse_json(tostring(Properties_d.eventProperties)).trackingId)
+| extend ImpactedRegions = tostring(parse_json(tostring(parse_json(tostring(parse_json(tostring(Properties_d.eventProperties)).impactedServices))[0].ImpactedRegions)))
+| summarize ImpactedSubscriptions=make_set(SubscriptionId), TimeGenerated=arg_max(TimeGenerated,*) by Level, ImpactedRegions, Service, TrackingId, Status
+| project TimeGenerated
+        , Level
+        , IncidentType
+        , ImpactedSubscriptions
+        , NumSubs=array_length(ImpactedSubscriptions)
+        , ImpactedRegions
+        , NumRegs=array_length(parse_json(ImpactedRegions))
+        , TrackingId
+        , Service
+        , Status
+        , Title
+        , ImpactStartTime
+        , ImpactMitigationTime
+| order by TimeGenerated
